@@ -8,6 +8,9 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.ListAdapter;
+import android.widget.ListView;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -50,6 +53,8 @@ public class MainActivity extends ActionBarActivity {
      */
     public static class PlaceholderFragment extends Fragment {
 
+        private ListAdapter forecastAdapter = null;
+
         public PlaceholderFragment() {
         }
 
@@ -57,6 +62,21 @@ public class MainActivity extends ActionBarActivity {
         public View onCreateView(LayoutInflater inflater, ViewGroup container,
                                  Bundle savedInstanceState) {
             View rootView = inflater.inflate(R.layout.fragment_main, container, false);
+
+            String[] stubData = new String[] {
+                    "Sunday, Jun 11 - 86 / 45",
+                    "Monday, Jun 12 - 82 / 65",
+                    "Tuesday, Jun 13 - 87 / 55",
+                    "Wednesday, Jun 14 - 92 / 45",
+                    "Thursday, Jun 15 - 67 / 100",
+                    "Friday, Jun 16 - 72 / 75",
+                    "Saturday, Jun 17 - 84 / 60"};
+
+            forecastAdapter = new ArrayAdapter<String>(getActivity(), R.layout.list_item_forecast, R.id.list_item_forecast_textview, stubData);
+
+            ListView forecast_list = (ListView) rootView.findViewById(R.id.listview_forecast);
+            forecast_list.setAdapter(adapter);
+
             return rootView;
         }
     }
