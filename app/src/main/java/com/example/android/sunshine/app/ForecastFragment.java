@@ -1,8 +1,11 @@
 package com.example.android.sunshine.app;
 
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.text.format.Time;
 import android.util.Log;
@@ -12,6 +15,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
@@ -27,8 +31,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 import static com.example.android.sunshine.app.BuildConfig.OpenWeatherMapApiKey;
 
@@ -55,22 +57,29 @@ public class ForecastFragment extends Fragment {
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
 
-        String[] stubData = new String[]{
-                "Sunday, Jun 11 - 86 / 45",
-                "Monday, Jun 12 - 82 / 65",
-                "Tuesday, Jun 13 - 87 / 55",
-                "Wednesday, Jun 14 - 92 / 45",
-                "Thursday, Jun 15 - 67 / 100",
-                "Friday, Jun 16 - 72 / 75",
-                "Saturday, Jun 17 - 84 / 60"};
-
-        List<String> weekForecast = new ArrayList<String>(Arrays.asList(stubData));
-        forecastAdapter = new ArrayAdapter<>(getActivity(), R.layout.list_item_forecast, R.id.list_item_forecast_textview, weekForecast);
+        forecastAdapter = new ArrayAdapter<>(getActivity(), R.layout.list_item_forecast, R.id.list_item_forecast_textview, new ArrayList());
 
         ListView forecast_list = (ListView) rootView.findViewById(R.id.listview_forecast);
         forecast_list.setAdapter(forecastAdapter);
 
+        forecast_list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int position, long row) {
+
+                String forecast = forecastAdapter.getItem(position);
+
+                Intent detailIntent = new Intent(getActivity(), DetailActivity.class);
+                detailIntent.putExtra(DetailActivity.EXTRA_FORECAST_NAME, forecast);
+                getActivity().startActivity(detailIntent);
+            }
+        });
         return rootView;
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        updateWeather();
     }
 
     @Override
@@ -81,16 +90,20 @@ public class ForecastFragment extends Fragment {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.action_refresh) {
-            fetchWeather("02144");
+            updateWeather();
             return true;
         }
         return super.onOptionsItemSelected(item);
     }
 
-    private void fetchWeather(String postalCode) {
+    private void updateWeather() {
         FetchWeatherTask fetchTask = new FetchWeatherTask();
-        String[] fetchParams = new String[]{postalCode};
-        fetchTask.execute(postalCode);
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        String location = preferences.getString(
+                getString(R.string.pref_location_key),
+                getString(R.string.pref_location_default));
+        String[] fetchParams = new String[]{location};
+        fetchTask.execute(location);
     }
 
     public enum WeatherTaskProgress {
@@ -302,8 +315,19 @@ public class ForecastFragment extends Fragment {
                 // Temperatures are in a child object called "temp".  Try not to name variables
                 // "temp" when working with temperature.  It confuses everybody.
                 JSONObject temperatureObject = dayForecast.getJSONObject(OWM_TEMPERATURE);
+
                 double high = temperatureObject.getDouble(OWM_MAX);
                 double low = temperatureObject.getDouble(OWM_MIN);
+
+                // Convert to Imperial if preferences so
+                String unit_key = PreferenceManager.getDefaultSharedPreferences(getActivity())
+                        .getString(
+                                getActivity().getString(R.string.pref_units_key),
+                                getActivity().getString(R.string.pref_units_metric));
+                if (unit_key != null && unit_key.contentEquals(getActivity().getString(R.string.pref_units_imperial_key))) {
+                    high = celsiusToFahrenheit(high);
+                    low = celsiusToFahrenheit(low);
+                }
 
                 highAndLow = formatHighLows(high, low);
                 resultStrs[i] = day + " - " + description + " - " + highAndLow;
@@ -312,4 +336,8 @@ public class ForecastFragment extends Fragment {
             return resultStrs;
         }
     }
+    private double celsiusToFahrenheit(final double src) {
+        return (src * 1.8) + 32.0;
+    }
+
 }
